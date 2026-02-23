@@ -1,6 +1,10 @@
 from flask import Flask, request, Response, render_template, send_from_directory, jsonify
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+# India timezone
+IST = ZoneInfo("Asia/Kolkata")
 import random
 import json
 
@@ -20,7 +24,7 @@ alerts = []
 
 # Store power supply status for each device (simulated)
 power_status = {
-    "DEV001": {"main": True, "backup": True, "last_update": datetime.now()}
+    "DEV001": {"main": True, "backup": True, "last_update": datetime.now(IST)}
 }
 
 def load_alerts_from_file():
@@ -91,7 +95,7 @@ def get_power_status(device_id):
         "backup_supply": "ON" if backup else "OFF",
         "state": state,
         "state_class": state_class,
-        "last_update": status["last_update"].strftime("%Y-%m-%d %H:%M:%S")
+        "last_update": status["last_update"].astimezone(IST).strftime("%Y-%m-%d %H:%M:%S %Z")
     })
 
 @app.route("/update-power-status", methods=["POST"])
@@ -107,7 +111,7 @@ def update_power_status():
     power_status[device_id] = {
         "main": main_supply,
         "backup": backup_supply,
-        "last_update": datetime.now()
+        "last_update": datetime.now(IST)
     }
     
     return jsonify({"status": "success"})
@@ -135,7 +139,7 @@ def simulate_power_change():
     power_status[device_id] = {
         "main": scenario["main"],
         "backup": scenario["backup"],
-        "last_update": datetime.now()
+        "last_update": datetime.now(IST)
     }
     
     # Create alert if power issue detected
@@ -145,7 +149,7 @@ def simulate_power_change():
             "device_id": device_id,
             "alert_type": "Power Alert",
             "message": "Main supply failed - Running on BACKUP power",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S %Z"),
             "image": "placeholder.jpg"
         }
         alerts.append(alert)
@@ -156,7 +160,7 @@ def simulate_power_change():
             "device_id": device_id,
             "alert_type": "Critical Power Alert",
             "message": "CRITICAL: No Power Available",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S %Z"),
             "image": "placeholder.jpg"
         }
         alerts.append(alert)
@@ -171,7 +175,7 @@ def receive_from_esp32():
         if request.content_type == "image/jpeg":
             # Save image with timestamp
             img_bytes = request.data
-            fname = datetime.now().strftime("%Y%m%d_%H%M%S") + ".jpg"
+            fname = datetime.now(IST).strftime("%Y%m%d_%H%M%S") + ".jpg"
             path = os.path.join(SAVE_DIR, fname)
             with open(path, "wb") as f:
                 f.write(img_bytes)
@@ -185,7 +189,7 @@ def receive_from_esp32():
                 "device_id": device_id,
                 "alert_type": "Image Captured",
                 "message": "Photo captured by device",
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "timestamp": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S %Z"),
                 "image": fname
             }
             alerts.append(alert)
@@ -196,7 +200,7 @@ def receive_from_esp32():
         if request.content_type == "application/x-www-form-urlencoded":
             message = request.form.get("message", "")
             device_id = request.args.get('device_id', 'UNKNOWN')
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S %Z")
             
             # Determine alert type based on message content
             alert_type = "General Alert"
