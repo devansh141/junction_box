@@ -468,10 +468,25 @@
             if (alerts.length > 0) {
                 // Get the most recent alert
                 let mostRecentAlert = alerts[alerts.length - 1];
-                let alertTime = new Date(mostRecentAlert.timestamp);
+
+                // Robust timestamp parsing: prefer ISO, fallback to common formats
+                function parseAlertTime(s) {
+                    let d = new Date(s);
+                    if (!isNaN(d)) return d;
+                    // Try replace first space between date and time with 'T'
+                    let s2 = s.replace(' ', 'T');
+                    // Handle timestamps that include timezone name like ' IST' by converting to offset
+                    if (s2.includes('IST')) {
+                        s2 = s2.replace(' IST', '') + '+05:30';
+                    }
+                    d = new Date(s2);
+                    return d;
+                }
+
+                let alertTime = parseAlertTime(mostRecentAlert.timestamp);
                 let timeDiffMinutes = (now - alertTime) / (1000 * 60);
-                
-                if (timeDiffMinutes <= 30) {
+
+                if (!isNaN(timeDiffMinutes) && timeDiffMinutes <= 30) {
                     breachDetected = true;
                 }
             }
@@ -480,7 +495,7 @@
                 securityHtml = `
                     <div class="security-breach-box detected">
                         <span class="security-indicator security-breach-red"></span>
-                        <strong>Security Breach : Alert detected</strong>
+                        <strong>Security breach : Alert detected</strong>
                     </div>
                 `;
             } else {
@@ -531,5 +546,4 @@
 </script>
 
 </body>
-
 </html>
