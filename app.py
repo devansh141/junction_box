@@ -16,7 +16,7 @@ os.makedirs(SAVE_DIR, exist_ok=True)
 
 # Device data with locations
 devices = [
-    {"id": "DEV001", "name": "Junction Box A", "lat": 18.645917, "lng": 73.792500}
+    {"id": "DEV001", "name": "Junction Box DEV001 ", "lat": 18.645917, "lng": 73.792500}
 ]
 
 # Store alerts in memory (in production, use a database)
@@ -257,3 +257,4 @@ def images(filename):
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
+
