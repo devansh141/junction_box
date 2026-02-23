@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32-CAM Alerts & Images</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; }
+        .msg-history { background: #f8f8f8; padding: 1em; border-radius: 6px; margin-bottom: 2em; }
+        .msg-history h2 { margin-top: 0; }
+        .images { display: flex; gap: 1em; }
+        .img-thumb { border: 1px solid #ccc; border-radius: 6px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>ESP32-CAM Message and Image History</h1>
+    <div class="msg-history">
+        <h2>Recent Messages</h2>
+        {% if messages %}
+            <ul>
+            {% for msg in messages %}
+                <li>{{ msg }}</li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No messages received yet.</p>
+        {% endif %}
+    </div>
+    <div>
+        <h2>Last Images</h2>
+        <div class="images">
+        {% if images %}
+            {% for img in images %}
+                <img src="{{ url_for('images', filename=img) }}" class="img-thumb" alt="Captured image">
+            {% endfor %}
+        {% else %}
+            <p>No images received yet.</p>
+        {% endif %}
+        </div>
+    </div>
+</body>
+</html>
