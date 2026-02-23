@@ -149,7 +149,7 @@ def simulate_power_change():
             "device_id": device_id,
             "alert_type": "Power Alert",
             "message": "Main supply failed - Running on BACKUP power",
-            "timestamp": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S %Z"),
+            "timestamp": datetime.now(IST).isoformat(),
             "image": "placeholder.jpg"
         }
         alerts.append(alert)
@@ -160,7 +160,7 @@ def simulate_power_change():
             "device_id": device_id,
             "alert_type": "Critical Power Alert",
             "message": "CRITICAL: No Power Available",
-            "timestamp": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S %Z"),
+            "timestamp": datetime.now(IST).isoformat(),
             "image": "placeholder.jpg"
         }
         alerts.append(alert)
@@ -189,7 +189,7 @@ def receive_from_esp32():
                 "device_id": device_id,
                 "alert_type": "Image Captured",
                 "message": "Photo captured by device",
-                "timestamp": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "timestamp": datetime.now(IST).isoformat(),
                 "image": fname
             }
             alerts.append(alert)
@@ -200,7 +200,7 @@ def receive_from_esp32():
         if request.content_type == "application/x-www-form-urlencoded":
             message = request.form.get("message", "")
             device_id = request.args.get('device_id', 'UNKNOWN')
-            timestamp = datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S %Z")
+            timestamp = datetime.now(IST).isoformat()
             
             # Determine alert type based on message content
             alert_type = "General Alert"
