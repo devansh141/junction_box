@@ -196,18 +196,20 @@
                 <p class="text-muted small">Click device to view alerts</p>
             </div>
             <div id="device-list"></div>
-            
-            <!-- Power Status Info -->
-            <div class="demo-controls">
-                <h6>Power Monitoring</h6>
-                <p class="text-muted small mb-0">Real-time power status updates every 2 seconds</p>
-            </div>
 
             <!-- Alert History Section -->
             <div class="history-section">
                 <h6>📋 Alert History</h6>
                 <div id="alert-history" style="max-height: 300px; overflow-y: auto;">
                     <p class="text-muted small">No alerts yet</p>
+                </div>
+            </div>
+            
+            <!-- Power History Section -->
+            <div class="history-section">
+                <h6>🔋 Power History</h6>
+                <div id="power-history" style="max-height: 300px; overflow-y: auto;">
+                    <p class="text-muted small">No power events yet</p>
                 </div>
             </div>
         </div>
@@ -248,6 +250,7 @@
     var devices = [];
     var allAlerts = [];
     var lastAlertCount = 0;
+    var lastPowerCount = 0;
 
     // Load all alerts at startup
     function loadAlertsHistory() {
@@ -393,6 +396,9 @@
         
         // Start continuous power status updates
         setInterval(updateAllPowerStatus, 2000);
+        // Load power history and poll
+        loadPowerHistory();
+        setInterval(loadPowerHistory, 2000);
     });
 
     function updatePowerStatus(deviceId) {
@@ -415,19 +421,45 @@
     function updateAllPowerStatus() {
         devices.forEach(device => {
             updatePowerStatus(device.id);
-            
-            // Simulate power changes occasionally (10% chance every 2 seconds)
-            if (Math.random() < 0.1) {
-                fetch('/simulate-power-change', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        device_id: device.id
-                    })
-                });
+        });
+    }
+
+    // Load power history from server and update sidebar
+    function loadPowerHistory() {
+        fetch('/power-history')
+        .then(res => res.json())
+        .then(data => {
+            let phDiv = document.getElementById('power-history');
+            if (!data || data.length === 0) {
+                phDiv.innerHTML = '<p class="text-muted small">No power events yet</p>';
+                return;
             }
+
+            // Detect new entries
+            if (data.length > lastPowerCount) {
+                let newEntry = data[data.length - 1];
+                lastPowerCount = data.length;
+
+                // If any supply is OFF, bring up device popup
+                if (!newEntry.main || !newEntry.backup) {
+                    if (markers[newEntry.device_id]) {
+                        map.setView(markers[newEntry.device_id].getLatLng(), 15);
+                        setTimeout(() => {
+                            showDeviceAlerts(newEntry.device_id);
+                        }, 500);
+                    }
+                }
+            }
+
+            // Show recent entries (reverse chronological)
+            let recent = data.slice().reverse().slice(0, 10);
+            phDiv.innerHTML = recent.map(e => `
+                <div class="history-item" onclick="focusDevice('${e.device_id}')">
+                    <span class="history-item-time">${e.timestamp}</span>
+                    <span class="history-item-type">${e.main ? 'Main:ON' : 'Main:OFF'} / ${e.backup ? 'Backup:ON' : 'Backup:OFF'}</span>
+                    <small style="color: #9ca3af;">${e.device_id}</small>
+                </div>
+            `).join('');
         });
     }
 
