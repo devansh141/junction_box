@@ -12,11 +12,12 @@ app = Flask(__name__)
 SAVE_DIR = "received_images"
 MSG_FILE = "messages.txt"
 ALERTS_FILE = "alerts_history.json"
+POWER_HISTORY_FILE = "power_history.json"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # Device data with locations
 devices = [
-    {"id": "DEV001", "name": "Junction Box DEV001 ", "lat": 18.645917, "lng": 73.792500}
+    {"id": "DEV001", "name": "Junction Box A", "lat": 18.645917, "lng": 73.792500}
 ]
 
 # Store alerts in memory (in production, use a database)
@@ -43,8 +44,26 @@ def save_alerts_to_file():
     with open(ALERTS_FILE, "w") as f:
         json.dump(alerts, f, indent=2)
 
+# Power history storage
+power_history = []
+
+def load_power_history_from_file():
+    global power_history
+    if os.path.exists(POWER_HISTORY_FILE):
+        try:
+            with open(POWER_HISTORY_FILE, "r") as f:
+                power_history = json.load(f)
+        except:
+            power_history = []
+    return power_history
+
+def save_power_history_to_file():
+    with open(POWER_HISTORY_FILE, "w") as f:
+        json.dump(power_history, f, indent=2)
+
 # Load alerts on startup
 load_alerts_from_file()
+load_power_history_from_file()
 
 @app.route("/")
 def dashboard():
@@ -98,6 +117,12 @@ def get_power_status(device_id):
         "last_update": status["last_update"].astimezone(IST).strftime("%Y-%m-%d %H:%M:%S %Z")
     })
 
+
+@app.route("/power-history")
+def get_power_history():
+    """Return recent power history entries"""
+    return jsonify(power_history[-50:])
+
 @app.route("/update-power-status", methods=["POST"])
 def update_power_status():
     """Update power status from ESP32 or simulate for demo"""
@@ -114,59 +139,19 @@ def update_power_status():
         "last_update": datetime.now(IST)
     }
     
-    return jsonify({"status": "success"})
+    # Only record power history if main supply is off
+    if not main_supply:
+        entry = {
+            "id": len(power_history) + 1,
+            "device_id": device_id,
+            "main": bool(main_supply),
+            "backup": bool(backup_supply),
+            "timestamp": datetime.now(IST).isoformat()
+        }
+        power_history.append(entry)
+        save_power_history_to_file()
 
-@app.route("/simulate-power-change", methods=["POST"])
-def simulate_power_change():
-    """Simulate realistic power supply changes for continuous demo"""
-    device_id = request.json.get("device_id")
-    
-    if device_id not in power_status:
-        return jsonify({"error": "Device not found"}), 404
-    
-    # Simulate realistic power scenarios
-    scenarios = [
-        {"main": True, "backup": True},   # Normal - 70% probability
-        {"main": True, "backup": True},
-        {"main": True, "backup": True},
-        {"main": True, "backup": True},
-        {"main": True, "backup": True},
-        {"main": True, "backup": True},
-        {"main": True, "backup": True}
-    ]
-    
-    scenario = random.choice(scenarios)
-    power_status[device_id] = {
-        "main": scenario["main"],
-        "backup": scenario["backup"],
-        "last_update": datetime.now(IST)
-    }
-    
-    # Create alert if power issue detected
-    if not scenario["main"] and scenario["backup"]:
-        alert = {
-            "id": len(alerts) + 1,
-            "device_id": device_id,
-            "alert_type": "Power Alert",
-            "message": "Main supply failed - Running on BACKUP power",
-            "timestamp": datetime.now(IST).isoformat(),
-            "image": "placeholder.jpg"
-        }
-        alerts.append(alert)
-        save_alerts_to_file()
-    elif not scenario["main"] and not scenario["backup"]:
-        alert = {
-            "id": len(alerts) + 1,
-            "device_id": device_id,
-            "alert_type": "Critical Power Alert",
-            "message": "CRITICAL: No Power Available",
-            "timestamp": datetime.now(IST).isoformat(),
-            "image": "placeholder.jpg"
-        }
-        alerts.append(alert)
-        save_alerts_to_file()
-    
-    return jsonify({"status": "success", "power_status": power_status[device_id]})
+    return jsonify({"status": "success"})
 
 @app.route("/old", methods=["GET", "POST"])
 def receive_from_esp32():
@@ -257,4 +242,3 @@ def images(filename):
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
-
